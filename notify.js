@@ -1,160 +1,19 @@
 var notifications = require("./notification");
 var topics = require("./topics");
+var restServer = require("./restServer");
+var wsServer = require("./wsServer");
+var mongoDB = require("./mongoDB");
 
 //requrie modules here
 function notify(){
 
 }
-notify['db'] = {
-
-}
-
-notify['list'] = {
-	store :{
-		"DemoChannel" : [],
-	}
-}
-
-notify.applyOnTopic={}
-
-notify.wsServer = function(){
-	var app = require('express')();
-	var http = require('http').Server(app);
-
-	var socket = require('socket.io')(http);
-	socket.on('connection', function(socket){
-
-		socket.on("set",function(data){
-			socket.join(data.topic,function(){
-				console.log("socket joined a room")
-			})
-			socket.to(data.topic).emit('join',"user joined")
-		})
-	});
-
-	http.listen(9000, function(){
-  		console.log('listening on :9000');
-	});
-
-	return socket;
-}
-
-notify.restServer = function(){
-	var express = require("express");
-	var app = express();
-	var bodyParser = require('body-parser');
-	//support parsing of application/json type post data
-	app.use(bodyParser.json());
-	//support parsing of application/x-www-form-urlencoded post data
-	app.use(bodyParser.urlencoded({ extended: true }));
-	app.listen(7000);
-	console.log("rest server started");
-	return app;
-}
-
-notify['create_mongo_connection'] = function(mongoHost,MongoPort,Database) {
-	var mongoose = require('mongoose');
-	// mongoose.connect("mongodb://127.0.0.1:27017/NodeProject");
-	var mongoDB = 'mongodb://' + mongoHost + ':'+MongoPort +'/'+ Database;
-	mongoose.connect(mongoDB);
-
-}
 
 
-
-
-notify.wsAddLChannel = function(topic, fn){
-	notify.applyOnTopic[topic] = fn
-	console.log("listener channel on ws created");
-	var socket = notify.ws;
-
-	socket.on('connection', function(socket){
-		socket.on("listner",function(data){
-			notifications.collection.insert({
-				'topic': data.topic,
-				'ts': Math.floor(Date.now()),
-				'notification': notify.applyOnTopic[data.topic](data.notification)
-			})
-			socket.to(data.topic).emit('serverpublisher', notify.applyOnTopic[data.topic](data.notification))
-		})
-	});
-}
-
-notify.wsAddPChannel = function(topic){
-	console.log("Publisher channel on ws created");
-	var socket = notify.ws;
-	socket.on('connection', function(socket){
-		socket.on('clientpublisher', function(data){
-			if (data.topic && data.from == undefined && data.to == undefined) {
-				notifications.find({'topic': data.topic},(err,data2) => {
-					socket.emit('response', data2);
-			  })
-			}
-			else if (data.topic && data.from != undefined && data.to == undefined) {
-				notifications.find({'topic': data.topic, "ts": {$gte: data.from}}, (err, data)=>{
-					socket.emit("response", data);
-				})
-			}
-			else if (data.topic && data.from != undefined && data.to != undefined) {
-				notifications.find({'topic': data.topic,"ts": {$gte: data.from, $lte: data.to}}, (err, data)=>{
-					socket.emit("response", data);
-				})
-			}
-	  })
-	})
-}
-
-notify.restAddLChannel = function(topic, fn){
-	console.log("listener channel on rest created");
-	notify.rest.post('/'+topic, function(req, resp){
-		topics.findOne({'topic': topic}, (err, data)=>{
-			if (!data) {
-				topics.collection.insert({'topic': topic});
-			}
-		})
-		notifications.collection.insert({
-			'topic': topic,
-			'ts': Math.floor(Date.now()),
-			'notification': fn(req.body),
-			"params": req.params,
-			"query": req.query,
-			"body": req.body,
-			'method':req.method,
-			'headers':req.headers
-		})
-		resp.status('200').send("success")
-	})
-}
-
-notify.restAddPChannel = function(topic){
-	console.log("Publisher channel on rest created");
-
-	notify.rest.post('/response/'+topic, function(req, resp){
-		notifications.find({},(err,data) => {
-	    resp.send(data);
-	  })
-	})
-
-	notify.rest.post('/response/'+topic + "/:from", function(req, resp){
-		notifications.find({'topic': topic,"ts": {$gte: req.params.from}}, (err, data)=>{
-			resp.send(data);
-		})
-
-	})
-
-	notify.rest.post('/response/'+topic + "/:from"+"/:to", function(req, resp){
-		notifications.find({'topic': topic, "ts": {$gte: req.params.from, $lte: req.params.to}}, (err, data)=>{
-			resp.send(data);
-		})
-	})
-}
 notify.init = function(mongoHost,MongoPort,Database){
-		notify.ws = notify.wsServer();
-		notify.ws['addLChannel'] = notify.wsAddLChannel;
-		notify.ws['addPChannel'] = notify.wsAddPChannel;
-		notify.rest = notify.restServer();
-		notify.rest['addLChannel'] = notify.restAddLChannel;
-		notify.rest['addPChannel'] = notify.restAddPChannel;
-		notify.mongo = notify.create_mongo_connection(mongoHost,MongoPort,Database)
+		notify.ws = wsServer;
+		notify.rest = restServer;
+		notify.mongo = mongoDB.create_mongo_connection(mongoHost,MongoPort,Database)
+
 };
 module.exports = notify;
