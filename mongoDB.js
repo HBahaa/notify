@@ -1,13 +1,28 @@
-restDB = function(){
-}
+var mongoose = require('mongoose');
+var notifications = require("./notification");
+var topics = require("./topics");
 
-restDB['create_mongo_connection'] = function(mongoHost,MongoPort,Database) {
-	var mongoose = require('mongoose');
+var notificationsSchema = new mongoose.Schema({
+  _id:String,
+  'topic': String,
+  'ts': Number,
+  'notification':String,
+  'HttpVersion': String,
+  "params": {},
+  "query": {},
+  "body": {},
+  'method': String,
+  'headers':{}
+});
+
+// mongoose.model('notifications', notificationsSchema);
+
+mongoose['create_mongo_connection'] = function(mongoHost,MongoPort,Database) {
 	var mongoDB = 'mongodb://' + mongoHost + ':'+MongoPort +'/'+ Database;
 	mongoose.connect(mongoDB);
 }
 
-restDB.insertNotification = function(topic,body, params, query, method, headers){
+mongoose.insertNotification = function(topic,body, params, query, method, headers){
   notifications.collection.insert({
     'topic': topic,
     'ts': Math.floor(Date.now()),
@@ -20,22 +35,22 @@ restDB.insertNotification = function(topic,body, params, query, method, headers)
   })
 }
 
-restDB.getAll = function(topic){
+mongoose['getAll'] = function(topic){
   notifications.find({'topic': topic},(err,data) => {
-    resp.send(data);
+    return data;
   })
 }
 
-restDB.getFrom = function(topic, from){
+mongoose.getFrom = function(topic, from){
   notifications.find({'topic': topic,"ts": {$gte: req.params.from}}, (err, data)=>{
-    resp.send(data);
+    return data;
   })
 }
 
-restDB.getForInterval = function(topic, from, to){
+mongoose.getForInterval = function(topic, from, to){
   notifications.find({'topic': topic, "ts": {$gte: req.params.from, $lte: req.params.to}}, (err, data)=>{
-    resp.send(data);
+    return data;
   })
 }
 
-module.exports = restDB;
+module.exports = mongoose;
