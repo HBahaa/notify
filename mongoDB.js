@@ -22,11 +22,11 @@ mongoose['create_mongo_connection'] = function(mongoHost,MongoPort,Database) {
 	mongoose.connect(mongoDB);
 }
 
-mongoose.insertNotification = function(topic,body, params, query, method, headers){
+mongoose.insertNotification = function(topic, fn, body, params, query, method, headers){
   notifications.collection.insert({
     'topic': topic,
     'ts': Math.floor(Date.now()),
-    'notification': fn(body),
+    'notification': fn,
     "params": params,
     "query": query,
     "body": body,
@@ -35,22 +35,48 @@ mongoose.insertNotification = function(topic,body, params, query, method, header
   })
 }
 
-mongoose['getAll'] = function(topic){
-  notifications.find({'topic': topic},(err,data) => {
-    return data;
+mongoose['getAll'] = function(topic, callback){
+  var data = notifications.find({'topic': topic}, (err, data)=>{
+    if (err) {
+      callback(err, null);
+    } else {
+      callback(null, data);
+    }
+  });
+}
+
+mongoose.getFrom = function(topic, from, callback){
+  notifications.find({'topic': topic,"ts": {$gte: from}}, (err, data)=>{
+    if (err) {
+      callback(err, null);
+    } else {
+      callback(null, data);
+    }
   })
 }
 
-mongoose.getFrom = function(topic, from){
-  notifications.find({'topic': topic,"ts": {$gte: req.params.from}}, (err, data)=>{
-    return data;
+mongoose.getForInterval = function(topic, from, to, callback){
+  notifications.find({'topic': topic, "ts": {$gte: from, $lte: to}}, (err, data)=>{
+    if (err) {
+      callback(err, null);
+    } else {
+      callback(null, data);
+    }
   })
 }
 
-mongoose.getForInterval = function(topic, from, to){
-  notifications.find({'topic': topic, "ts": {$gte: req.params.from, $lte: req.params.to}}, (err, data)=>{
-    return data;
-  })
+mongoose.getTopic = function(topic, callback){
+ topics.findOne({'topic': topic}, (err, data)=>{
+   if (err) {
+     callback(err, null);
+   } else {
+     callback(null, data);
+   }
+ })
+}
+
+mongoose.insertTopic = function(topic){
+ topics.collection.insert({'topic': topic});
 }
 
 module.exports = mongoose;

@@ -13,7 +13,5 @@ notify.init = function(mongoHost,MongoPort,Database){
 		notify.ws = wsServer;
 		notify.rest = restServer;
 		notify.mongo = mongoDB.create_mongo_connection(mongoHost,MongoPort,Database)
-		console.log("getAll = ", mongoDB.getAll('javascript'));
-
 };
 module.exports = notify;

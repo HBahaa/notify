@@ -17,7 +17,7 @@
   	console.log("connected")
     socket.emit("set",{"topic":"javascript"});
 	socket.emit("listner",{"topic":"javascript", 'notification': 'Hi javascript'});
-	socket.emit("publisher",{"topic":"javascript"});
+	// socket.emit("publisher",{"topic":"javascript"});
 	socket.on("join",function(data){
 		console.log(data)
 	})
@@ -26,7 +26,7 @@
 	})
 	console.log("server id",socket.id)
 	socket.on("response",function(data){
-		console.log("server query reply",data)
+		console.log("server query reply ===",data)
 	})
   });
 

@@ -1,3 +1,4 @@
+var mongoDB = require("./mongoDB");
 
 rest = function(){
 	var express = require("express");
@@ -17,21 +18,15 @@ restServer = rest();
 restServer['addLChannel'] = function(topic, fn){
 	console.log("listener channel on rest created");
 	restServer.post('/'+topic, function(req, resp){
-		topics.findOne({'topic': topic}, (err, data)=>{
-			if (!data) {
-				topics.collection.insert({'topic': topic});
+		mongoDB.getTopic(topic, function(err, result) {
+			if (err) {
+				console.log(err);
+			}
+			if (!result) {
+				mongoDB.insertTopic(topic)
 			}
 		})
-		notifications.collection.insert({
-			'topic': topic,
-			'ts': Math.floor(Date.now()),
-			'notification': fn(req.body),
-			"params": req.params,
-			"query": req.query,
-			"body": req.body,
-			'method':req.method,
-			'headers':req.headers
-		})
+		mongoDB.insertNotification(topic,fn(req.body), req.params, req.query,req.body, req.method, req.headers)
 		resp.status('200').send("success")
 	})
 }
@@ -40,21 +35,30 @@ restServer['addPChannel'] = function(topic){
 	console.log("Publisher channel on rest created");
 
 	restServer.post('/response/'+topic, function(req, resp){
-		notifications.find({'topic': topic},(err,data) => {
-	    resp.send(data);
-	  })
+		mongoDB.getAll(topic, function(err, result) {
+			if (err) {
+				console.log(err);
+			}
+			resp.send(result);
+		})
 	})
 
 	restServer.post('/response/'+topic + "/:from", function(req, resp){
-		notifications.find({'topic': topic,"ts": {$gte: req.params.from}}, (err, data)=>{
-			resp.send(data);
-		})
+		mongoDB.getFrom('javascript', req.params.from, function(err, result) {
+			if (err) {
+				console.log(err);
+			}
+			resp.send(result);
+		});
 	})
 
 	restServer.post('/response/'+topic + "/:from"+"/:to", function(req, resp){
-		notifications.find({'topic': topic, "ts": {$gte: req.params.from, $lte: req.params.to}}, (err, data)=>{
-			resp.send(data);
-		})
+		mongoDB.getForInterval('javascript', req.params.from, req.params.to, function(err, result) {
+			if (err) {
+				console.log(err);
+			}
+			resp.send(result);
+		});
 	})
 }
 
