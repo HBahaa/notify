@@ -1,4 +1,5 @@
 var mongoDB = require("./mongoDB");
+var wsServer = require("./wsServer");
 
 rest = function(){
 	var express = require("express");
@@ -27,6 +28,7 @@ restServer['addLChannel'] = function(topic, fn){
 			}
 		})
 		mongoDB.insertNotification(topic,fn(req.body), req.params, req.query,req.body, req.method, req.headers)
+		wsServer.to(topic).emit('serverpublisher', fn(req.body))
 		resp.status('200').send("success")
 	})
 }
